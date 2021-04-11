@@ -3,6 +3,7 @@ package com.jackxue.tank;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Random;
 import java.util.UUID;
 
@@ -29,6 +30,9 @@ public class Tank {
 
 	private TankFrame tf = null;
 
+	//发射策略
+	private FireStrategy<Tank> fs = new DefaultFireStrategy();
+
 	private boolean living = true;
 	public boolean isLiving() {
 		return living;
@@ -39,7 +43,6 @@ public class Tank {
 	}
 	private Group group = Group.BAD;
 	public Tank(int x, int y, Dir dir, Group group, TankFrame tf) {
-		super();
 		this.x = x;
 		this.y = y;
 		this.dir = dir;
@@ -50,6 +53,12 @@ public class Tank {
 		rect.y = this.y;
 		rect.width = WIDTH;
 		rect.height = HEIGHT;
+		try {
+			String tkFSName = (String) PropertyMgr.get("tkFS");
+			fs = (FireStrategy<Tank>) Class.forName(tkFSName).getDeclaredConstructor().newInstance();
+		}catch (Exception e){
+			e.printStackTrace();
+		}
 	}
 	
 	public Tank(TankJoinMsg msg) {
@@ -64,6 +73,12 @@ public class Tank {
 		rect.y = this.y;
 		rect.width = WIDTH;
 		rect.height = HEIGHT;
+		try {
+			String tkFSName = (String) PropertyMgr.get("tkFS");
+			fs = (FireStrategy<Tank>) Class.forName(tkFSName).getDeclaredConstructor().newInstance();
+		}catch (Exception e){
+			e.printStackTrace();
+		}
 	}
 	
 	private void boundsCheck() {
@@ -81,16 +96,7 @@ public class Tank {
 	}
 	
 	public void fire() {
-		int bX = this.x + Tank.WIDTH/2 - Bullet.WIDTH/2;
-		int bY = this.y + Tank.HEIGHT/2 - Bullet.HEIGHT/2;
-		
-		Bullet b = new Bullet(this.id, bX, bY, this.dir, this.group, this.tf);
-		
-		tf.bullets.add(b);
-		
-		Client.INSTANCE.send(new BulletNewMsg(b));
-		
-		if(this.group == Group.GOOD) new Thread(()->new Audio("audio/tank_fire.wav").play()).start();
+		fs.fire(this);
 	}
 	
 	public Dir getDir() {
@@ -110,6 +116,10 @@ public class Tank {
 	}
 	public int getY() {
 		return y;
+	}
+
+	public TankFrame getTf() {
+		return tf;
 	}
 
 	public boolean isMoving() {
