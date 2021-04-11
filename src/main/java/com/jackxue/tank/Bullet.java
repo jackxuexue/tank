@@ -1,83 +1,161 @@
 package com.jackxue.tank;
 
-import java.awt.*;
-import java.util.List;
+import java.awt.Graphics;
+import java.awt.Rectangle;
+import java.util.UUID;
+
+import com.jackxue.tank.net.Client;
+import com.jackxue.tank.net.TankDieMsg;
 
 public class Bullet {
-    private int x = 0,  y = 0;
-    public static int width = 20, height = 20;
-    private Dir dir;
-    private TankFrame mainFrame;
-    private static final int SPEED = 12;
-    private boolean isDead = false;
-    private Group group = Group.BAD;
+	private static final int SPEED = 6;
+	
+	public static int WIDTH = ResourceMgr.bulletD.getWidth();
 
-    public Bullet(int x, int y, Dir dir, TankFrame mainFrame, Group group) {
-        this.x = x;
-        this.y = y;
-        this.dir = dir;
-        this.mainFrame = mainFrame;
-        this.group = group;
-        System.out.println("x:" + x + " y:" + y);
-    }
+	public static int HEIGHT = ResourceMgr.bulletD.getHeight();
 
-    /**
-     * 画子弹的方法
-     * @param g
-     */
-    public void paint(Graphics g){
-        if(isDead ){
-            return;
-        }
-        g.fillOval(x, y, width, height);
-        move();
-        collision();
-    }
+	private UUID id = UUID.randomUUID();
+	private UUID playerId;
 
-    private void collision() {
-        List<Tank> enemyList = mainFrame.getEnemyList();
-        for (Tank tank : enemyList) {
-            if(group != tank.getGroup()) {
-                if (x >= tank.getX() && x <= (tank.getX() + tank.getWEIGHT()) &&
-                        y >= tank.getY() && y <= (tank.getY() + tank.getHEIGHT())) {
-                    die();
-                    tank.die();
-                }
-            }
-        }
-    }
+	Rectangle rect = new Rectangle();
 
-    /**
-     * 移动方法
-     */
-    private void move() {
-        //根据方向移动
-        switch (dir){
-            case U:
-                y -= SPEED;
-                break;
-            case D:
-                y += SPEED;
-                break;
-            case L:
-                x -= SPEED;
-                break;
-            case R:
-                x += SPEED;
-                break;
-        }
-        //判断是否出界限了
-        if(x < 0 || x > mainFrame.getGameWidth() || y < 0 || y > mainFrame.getGameHeight()){
-            isDead = true;
-        }
-    }
+	private int x, y;
 
+	private Dir dir;
 
-    public boolean isDead() {
-        return isDead;
-    }
+	private boolean living = true;
 
-    public void die(){
-        isDead = true;
-    }
+	TankFrame tf = null;
+
+	private Group group = Group.BAD;
+
+	public Bullet(UUID playerId, int x, int y, Dir dir, Group group, TankFrame tf) {
+		this.playerId = playerId;
+		this.x = x;
+		this.y = y;
+		this.dir = dir;
+		this.group = group;
+		this.tf = tf;
+		
+		rect.x = this.x;
+		rect.y = this.y;
+		rect.width = WIDTH;
+		rect.height = HEIGHT;
+				
+	}
+
+	public void collideWith(Tank tank) {
+		if(this.playerId.equals(tank.getId())) return;
+		//System.out.println("bullet rect:" + this.rect);
+		//System.out.println("com.mashibing.tank rect:" + com.mashibing.tank.rect);
+		if(this.living && tank.isLiving() && this.rect.intersects(tank.rect)) {
+			tank.die();
+			this.die();
+			Client.INSTANCE.send(new TankDieMsg(this.id, tank.getId()));
+		}
+		
+	}
+
+	public void die() {
+		this.living = false;
+	}
+
+	public Dir getDir() {
+		return dir;
+	}
+	public Group getGroup() {
+		return group;
+	}
+	public UUID getId() {
+		return id;
+	}
+	
+	public UUID getPlayerId() {
+		return playerId;
+	}
+	
+	public int getX() {
+		return x;
+	}
+	public int getY() {
+		return y;
+	}
+	
+	public boolean isLiving() {
+		return living;
+	}
+	private void move() {
+		
+		switch (dir) {
+		case LEFT:
+			x -= SPEED;
+			break;
+		case UP:
+			y -= SPEED;
+			break;
+		case RIGHT:
+			x += SPEED;
+			break;
+		case DOWN:
+			y += SPEED;
+			break;
+		}
+		
+		//update rect
+		rect.x = this.x;
+		rect.y = this.y;
+		
+		if(x < 0 || y < 0 || x > TankFrame.GAME_WIDTH || y > TankFrame.GAME_HEIGHT) living = false;
+		
+	}
+	public void paint(Graphics g) {
+		if(!living) {
+			tf.bullets.remove(this);
+		}
+		
+		switch(dir) {
+		case LEFT:
+			g.drawImage(ResourceMgr.bulletL, x, y, null);
+			break;
+		case UP:
+			g.drawImage(ResourceMgr.bulletU, x, y, null);
+			break;
+		case RIGHT:
+			g.drawImage(ResourceMgr.bulletR, x, y, null);
+			break;
+		case DOWN:
+			g.drawImage(ResourceMgr.bulletD, x, y, null);
+			break;
+		}
+		
+		move();
+	}
+	
+	public void setDir(Dir dir) {
+		this.dir = dir;
+	}
+	
+	public void setGroup(Group group) {
+		this.group = group;
+	}
+
+	public void setId(UUID id) {
+		this.id = id;
+	}
+
+	public void setLiving(boolean living) {
+		this.living = living;
+	}
+	
+	public void setPlayerId(UUID playerId) {
+		this.playerId = playerId;
+	}
+
+	public void setX(int x) {
+		this.x = x;
+	}
+
+	public void setY(int y) {
+		this.y = y;
+	}
 }
